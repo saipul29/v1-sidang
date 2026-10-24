@@ -1,0 +1,33 @@
+/* 1. Import font eksternal wajib diletakkan paling atas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+/* 2. Import inti Tailwind */
+@import 'tailwindcss';
+
+/* 3. Konfigurasi path sumber (sumber bawaan Laravel) */
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* 4. Mendaftarkan warna dan font ke dalam tema Tailwind */
+@theme {
+    /* Tipografi */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif; /* Mengubah font bawaan jadi Inter */
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-accent: 'Sansation', sans-serif;
+
+    /* Palet Warna */
+    --color-navy: #1E3A8A;
+    --color-royal-start: #1D4ED8;
+    --color-royal-end: #2563EB;
+    --color-orange: #F97316;
+    --color-soft-bg: #E0E7FF;
+    --color-pure-white: #FFFFFF;
+}
+
+/* 5. Menerapkan gaya dasar ke tag body menggunakan layer base */
+@layer base {
+    body {
+        /* Menggunakan @apply agar bisa memanfaatkan class Tailwind langsung di CSS */
+        @apply font-sans text-navy bg-pure-white;
+    }
+}
