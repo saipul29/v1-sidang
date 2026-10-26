@@ -6,6 +6,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\LandingController;
 
 // Landing Page
 Route::get('/', function () {
@@ -18,6 +19,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/daftar', function () { return view('daftar'); });
     Route::post('/login', [AuthController::class, 'loginPost']);
     Route::post('/daftar', [AuthController::class, 'registerPost']);
+    Route::get('/cek-status', [LandingController::class, 'cekStatus']);
+    Route::get('/kategori', [LandingController::class, 'kategoriIndex']);
+    Route::get('/kategori/{tipe}', [LandingController::class, 'kategoriDetail']);
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -39,6 +43,10 @@ Route::middleware('auth')->group(function () {
     
     // Rute Revisi Dokumen (Jika mahasiswa diminta perbaikan)
     Route::post('/dokumen/{id}/revisi', [PengajuanController::class, 'revisi']);
+    // Rute untuk menangani unggah ulang dokumen revisi oleh mahasiswa
+    Route::post('/dokumen/{id}/revisi', [App\Http\Controllers\PengajuanController::class, 'uploadRevisi']);
+    // Rute untuk melihat PDF mahasiswa
+    Route::get('/dokumen/{id}/lihat', [App\Http\Controllers\PengajuanController::class, 'lihatDokumen']);
 });
 
 // ==========================================

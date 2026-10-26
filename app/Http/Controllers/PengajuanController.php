@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage; // Wajib ditambahkan untuk memproses file
 use App\Models\Pengajuan;
 use App\Models\DokumenPengajuan;
 use App\Models\RiwayatPengajuan;
@@ -50,14 +51,14 @@ class PengajuanController extends Controller
             return back()->withErrors(['pendaftaran' => 'Pendaftaran sidang saat ini sedang ditutup. Anda tidak dapat mengirim pengajuan.']);
         }
 
-        // 1. Validasi Dasar dan File (Sesuaikan dengan 4 input file baru)
+        // 1. Validasi Dasar dan File
         $rules = [
             'jalur' => 'required|in:reguler,transfer',
             'paket_sidang' => 'required|in:skripsi,komprehensif',
             'file_krs' => 'required|mimes:pdf|max:2048',
             'file_workshop' => 'required|mimes:pdf|max:2048',
             'file_kursus' => 'required|mimes:pdf|max:2048',
-            'file_tambahan' => 'required|mimes:pdf|max:5120', // Max 5MB karena gabungan banyak dokumen
+            'file_tambahan' => 'required|mimes:pdf|max:5120',
         ];
 
         // Validasi Dinamis: Jika Skripsi vs Jika Komprehensif
@@ -91,7 +92,7 @@ class PengajuanController extends Controller
             'status_pengajuan' => 'menunggu',
         ]);
 
-        // 3. Proses Unggah File PDF (Sesuaikan dengan nama input baru)
+        // 3. Proses Unggah File PDF (Disimpan di folder public/dokumen agar bisa dipreview)
         $daftarBerkas = [
             'krs' => $request->file('file_krs'),
             'workshop' => $request->file('file_workshop'),
@@ -101,7 +102,8 @@ class PengajuanController extends Controller
 
         foreach ($daftarBerkas as $jenis => $file) {
             if ($file) {
-                $path = $file->store('dokumen_sidang');
+                $filename = time() . '_' . $jenis . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('public/dokumen', $filename);
 
                 DokumenPengajuan::create([
                     'pengajuan_id' => $pengajuan->id,
@@ -123,56 +125,113 @@ class PengajuanController extends Controller
         return redirect('/statuspengajuan')->with('success', 'Pengajuan berhasil dikirim! Silakan pantau status pemeriksaan secara berkala.');
     }
 
-    // Menampilkan halaman daftar status & detail pengajuan
-    public function status($id = null)
+    // Menampilkan halaman daftar status & detail pengajuan (Dengan Filter & Search)
+    public function status(Request $request, $id = null)
     {
         $user = Auth::user();
-        $pengajuans = Pengajuan::where('user_id', $user->id)->latest()->get();
 
+        // Tampilan Detail
         if ($id) {
-            $pengajuanAktif = Pengajuan::where('user_id', $user->id)->with(['dokumen', 'riwayat.user'])->findOrFail($id);
-        } else {
-            $pengajuanAktif = Pengajuan::where('user_id', $user->id)->with(['dokumen', 'riwayat.user'])->latest()->first();
+            $pengajuanAktif = Pengajuan::where('user_id', $user->id)
+                                       ->with(['dokumen', 'riwayat.user'])
+                                       ->findOrFail($id);
+            return view('statuspengajuan', compact('pengajuanAktif'));
         }
 
-        return view('statuspengajuan', compact('pengajuans', 'pengajuanAktif'));
+        // Tampilan Daftar (Menangkap query pencarian dan dropdown)
+        $query = Pengajuan::where('user_id', $user->id);
+
+        if ($request->filled('search')) {
+            $query->where('nomor_pengajuan', 'like', "%{$request->search}%");
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status_pengajuan', $request->status);
+        }
+
+        $pengajuans = $query->latest()->get();
+
+        return view('statuspengajuan', compact('pengajuans'));
     }
 
-    // Memproses unggah ulang dokumen yang direvisi
-    public function revisi(Request $request, $id)
+    // Memproses unggah ulang dokumen yang direvisi (Gabungan logika revisi)
+    public function uploadRevisi(Request $request, $id)
+    {
+        // Validasi file yang diunggah harus PDF dan maksimal 2MB
+        $request->validate([
+            'file_revisi' => 'required|mimes:pdf|max:2048'
+        ], [
+            'file_revisi.required' => 'Harap pilih file PDF terlebih dahulu.',
+            'file_revisi.mimes' => 'File harus berformat PDF.',
+            'file_revisi.max' => 'Ukuran file maksimal 2MB.'
+        ]);
+
+        $dokumen = DokumenPengajuan::findOrFail($id);
+
+        // Keamanan: Pastikan dokumen ini milik mahasiswa yang sedang login
+        if ($dokumen->pengajuan->user_id !== Auth::id()) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        if ($request->hasFile('file_revisi')) {
+            // Hapus file lama di server agar tidak menumpuk
+            if (Storage::exists($dokumen->file_path)) {
+                Storage::delete($dokumen->file_path);
+            }
+
+            // Simpan file PDF yang baru
+            $file = $request->file('file_revisi');
+            $filename = time() . '_revisi_' . $file->getClientOriginalName();
+            $path = $file->storeAs('public/dokumen', $filename);
+
+            // Update database: Ubah status dokumen kembali ke 'menunggu'
+            $dokumen->update([
+                'file_path' => $path,
+                'status_dokumen' => 'menunggu', 
+                'catatan_perbaikan' => null // Kosongkan catatan karena sudah diperbaiki
+            ]);
+
+            // Catat di Riwayat agar Admin tahu mahasiswa sudah revisi individual
+            RiwayatPengajuan::create([
+                'pengajuan_id' => $dokumen->pengajuan_id,
+                'user_id' => Auth::id(),
+                'aksi' => 'Revisi Dokumen: ' . ucwords(str_replace('_', ' ', $dokumen->jenis_dokumen)),
+                'deskripsi' => 'Mahasiswa telah mengunggah ulang dokumen. Menunggu verifikasi ulang.',
+            ]);
+
+            // Mengecek apakah semua dokumen yang perlu diperbaiki sudah diunggah ulang
+            $pengajuan = $dokumen->pengajuan;
+            $masihAdaPerbaikan = $pengajuan->dokumen()->whereIn('status_dokumen', ['perlu_perbaikan', 'perbaikan'])->exists();
+
+            if (!$masihAdaPerbaikan && $pengajuan->status_pengajuan == 'perbaikan') {
+                $pengajuan->update(['status_pengajuan' => 'proses']);
+                
+                RiwayatPengajuan::create([
+                    'pengajuan_id' => $pengajuan->id,
+                    'user_id' => Auth::id(),
+                    'aksi' => 'Seluruh Revisi Selesai',
+                    'deskripsi' => 'Mahasiswa telah mengunggah ulang seluruh dokumen yang memerlukan perbaikan. Status kembali diproses.',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Dokumen revisi berhasil diunggah! Silakan tunggu admin memverifikasi ulang.');
+    }
+
+    // Menampilkan PDF tanpa error 403
+    public function lihatDokumen($id)
     {
         $dokumen = DokumenPengajuan::findOrFail($id);
 
+        // Keamanan tambahan: Pastikan dokumen ini milik mahasiswa yang sedang login
         if ($dokumen->pengajuan->user_id !== Auth::id()) {
-            abort(403, 'Akses tidak diizinkan.');
+            abort(403, 'Akses ditolak. Anda tidak memiliki izin melihat dokumen ini.');
         }
 
-        $request->validate([
-            'file_revisi' => 'required|mimes:pdf|max:2048'
-        ]);
-
-        $path = $request->file('file_revisi')->store('dokumen_sidang');
-
-        $dokumen->update([
-            'file_path' => $path,
-            'status_dokumen' => 'menunggu',
-            'catatan_perbaikan' => null
-        ]);
-
-        $pengajuan = $dokumen->pengajuan;
-        $masihAdaPerbaikan = $pengajuan->dokumen()->where('status_dokumen', 'perlu_perbaikan')->exists();
-
-        if (!$masihAdaPerbaikan) {
-            $pengajuan->update(['status_pengajuan' => 'proses']);
-            
-            RiwayatPengajuan::create([
-                'pengajuan_id' => $pengajuan->id,
-                'user_id' => Auth::id(),
-                'aksi' => 'Revisi Dikirim',
-                'deskripsi' => 'Mahasiswa telah mengunggah ulang seluruh dokumen yang memerlukan perbaikan.',
-            ]);
+        if (!Storage::exists($dokumen->file_path)) {
+            abort(404, 'File PDF tidak ditemukan di server.');
         }
 
-        return back()->with('success', 'Dokumen revisi berhasil diunggah dan dikirim ke Admin!');
+        return Storage::response($dokumen->file_path);
     }
 }

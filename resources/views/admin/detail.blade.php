@@ -90,11 +90,9 @@
                                 <select name="status_dokumen" class="w-full p-2.5 text-sm border border-gray-300 rounded-md outline-none focus:border-blue-500 bg-white" onchange="document.getElementById('catatan-{{ $dok->id }}').style.display = this.value === 'perlu_perbaikan' ? 'block' : 'none'">
                                     <option value="menunggu" {{ $dok->status_dokumen == 'menunggu' ? 'selected' : '' }} disabled>Pilih Status...</option>
                                     <option value="lengkap" {{ $dok->status_dokumen == 'lengkap' ? 'selected' : '' }}>✅ Sesuai / Lengkap</option>
-                                    <!-- VALUE DIUBAH MENJADI perlu_perbaikan -->
                                     <option value="perlu_perbaikan" {{ $dok->status_dokumen == 'perlu_perbaikan' ? 'selected' : '' }}>❌ Tolak / Revisi</option>
                                 </select>
                             </div>
-                            <!-- ID STYLE DIUBAH MENJADI perlu_perbaikan -->
                             <div class="w-full md:w-2/3" id="catatan-{{ $dok->id }}" style="display: {{ $dok->status_dokumen == 'perlu_perbaikan' ? 'block' : 'none' }};">
                                 <label class="text-xs font-bold text-gray-500 mb-2 block">Catatan Revisi (Wajib jika ditolak)</label>
                                 <input type="text" name="catatan_perbaikan" value="{{ $dok->catatan_perbaikan }}" placeholder="Contoh: Scan dokumen buram, mohon upload ulang..." class="w-full p-2.5 text-sm border border-gray-300 rounded-md outline-none focus:border-red-500">
@@ -129,7 +127,6 @@
                                 </div>
                             </label>
                             
-                            <!-- VALUE DIUBAH MENJADI perlu_perbaikan -->
                             <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-red-50 transition">
                                 <input type="radio" name="status_pengajuan" value="perlu_perbaikan" required class="w-4 h-4 text-red-600 mt-0.5">
                                 <div>
@@ -137,6 +134,18 @@
                                     <span class="text-xs text-gray-500">Ada dokumen yang harus diperbaiki.</span>
                                 </div>
                             </label>
+                        </div>
+                        
+                        <!-- Penambahan Dropdown Kategori Hasil Disini -->
+                        <div class="mb-5 pt-4 border-t border-gray-200">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Kategori Hasil <span class="text-red-500">*</span></label>
+                            <select name="kategori_hasil" required class="w-full p-3 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500 bg-white">
+                                <option value="" disabled selected>Pilih Kategori Hasil...</option>
+                                <option value="1">✅ Bisa Daftar Sidang (Status 1)</option>
+                                <option value="2a">❌ Kendala Berkas (Status 2a)</option>
+                                <option value="2b">❌ Kendala Nilai (Status 2b)</option>
+                                <option value="3">❌ Kendala Pembayaran (Status 3)</option>
+                            </select>
                         </div>
                         
                         <div class="mb-6">

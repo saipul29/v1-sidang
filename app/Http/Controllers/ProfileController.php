@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\MahasiswaProfile;
+use Illuminate\Validation\Rule; // Wajib ditambahkan untuk validasi unique
 
 class ProfileController extends Controller
 {
@@ -26,7 +27,13 @@ class ProfileController extends Controller
         // 1. Validasi input
         $request->validate([
             'name' => 'required|string|max:255',
-            'npm' => 'required|string|max:20',
+            'npm' => [
+                'required',
+                'string',
+                'max:20',
+                // Mengabaikan pengecekan unik jika ID profil sama dengan milik user yang sedang login
+                Rule::unique('mahasiswa_profiles', 'npm')->ignore($user->profil->id ?? null),
+            ],
             'no_whatsapp' => 'required|string|max:20',
             'program_studi' => 'required|string|max:100',
             'fakultas' => 'required|string|max:100',

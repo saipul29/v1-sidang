@@ -58,7 +58,8 @@
 
                     if (this.step === 3) {
                         if (this.fileNameKrs === '' || this.fileNameWorkshop === '' || this.fileNameKursus === '' || this.fileNameTambahan === '') {
-                            alert('Harap unggah seluruh dokumen PDF (KRS, Workshop, Kursus, dan Tambahan) sebelum melanjutkan.');
+                            // Pesan alert disesuaikan agar mencakup Manual Book
+                            alert('Harap unggah seluruh dokumen PDF (KRS, Workshop, Kursus, dan Tambahan/Manual Book) sebelum melanjutkan.');
                             return false;
                         }
                         return true;
@@ -320,15 +321,18 @@
                                             </div>
                                         </div>
 
-                                        <!-- 4. Berkas Tambahan -->
+                                        <!-- 4. Berkas Tambahan / Manual Book (Diubah secara dinamis) -->
                                         <div class="border border-gray-200 rounded-xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white hover:border-gray-300 transition shadow-sm">
                                             <div class="flex items-center gap-4">
                                                 <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 border border-blue-100">
                                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <h4 class="text-sm font-bold text-navy">Berkas Tambahan <span class="text-red-500">*</span></h4>
-                                                    <p class="text-xs max-w-lg" :class="fileNameTambahan ? 'text-blue-600 font-bold' : 'text-gray-500'" x-text="fileNameTambahan || 'Khusus mahasiswa transfer, Gabungkan pengesahan penyetaraan PI yang sudah ditandatangani, ijazah, konversi nilai, dan transkrip D3 dalam satu PDF.'"></p>
+                                                    <h4 class="text-sm font-bold text-navy">
+                                                        <span x-text="(jalur === 'reguler' && paket === 'skripsi') ? 'Manual Book' : 'Berkas Tambahan'"></span> 
+                                                        <span class="text-red-500">*</span>
+                                                    </h4>
+                                                    <p class="text-xs max-w-lg" :class="fileNameTambahan ? 'text-blue-600 font-bold' : 'text-gray-500'" x-text="fileNameTambahan || ((jalur === 'reguler' && paket === 'skripsi') ? 'Unggah Manual Book dari aplikasi skripsi Anda dalam bentuk PDF.' : 'Khusus mahasiswa transfer, Gabungkan pengesahan penyetaraan PI yang sudah ditandatangani, ijazah, konversi nilai, dan transkrip D3 dalam satu PDF.')"></p>
                                                 </div>
                                             </div>
                                             <div class="relative overflow-hidden shrink-0">

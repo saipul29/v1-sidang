@@ -87,21 +87,20 @@ class AdminController extends Controller implements HasMiddleware
     {
         $pengajuan = Pengajuan::findOrFail($id);
 
+        // Ubah validasi kategori_hasil menjadi in:1,2a,2b,3
         $request->validate([
             'status_pengajuan' => 'required|in:perlu_perbaikan,disetujui',
+            'kategori_hasil' => 'required|in:1,2a,2b,3',
             'deskripsi_riwayat' => 'required|string'
         ]);
 
-        // CEGAT DISINI: 
-        // Jika form mengirim 'disetujui', simpan sebagai 'selesai'
-        // Jika form mengirim 'perlu_perbaikan', simpan ke tabel pengajuans sebagai 'perbaikan'
         $statusDatabase = $request->status_pengajuan === 'disetujui' ? 'selesai' : 'perbaikan';
 
         $pengajuan->update([
-            'status_pengajuan' => $statusDatabase
+            'status_pengajuan' => $statusDatabase,
+            'kategori_hasil' => $request->kategori_hasil
         ]);
 
-        // Catat di riwayat
         RiwayatPengajuan::create([
             'pengajuan_id' => $pengajuan->id,
             'user_id' => Auth::id(),
